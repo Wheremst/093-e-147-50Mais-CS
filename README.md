@@ -44,6 +44,6 @@
 3.  **Credenciais:**
     - Abra o arquivo `.py` e altere as variáveis `USUARIO` e `SENHA` com suas credenciais reais.
     - Também altere o caminho que deseja para o download dos arquivos excel
-4.  **Agendamento (Opcional):**
+4.  **Agendamento:**
     - O arquivo `executar_automacao_93_147` é usado para agendar a execução. **É necessário editar este arquivo** e atualizar os caminhos para o seu `python.exe` e para a pasta do script, conforme o seu computador.
 
