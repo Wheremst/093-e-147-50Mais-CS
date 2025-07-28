@@ -1,5 +1,5 @@
 # 093-e-147-50Mais-CS
-### Um projeto de automação em python,  feito para ajudar a acelerar o processo de geração de relatórios mensais todo dia do site da empresa 50 mais Courier Senior.
+### Uma rotina de RPA em python, feito para ajudar a geração de relatórios agendados varias vezes ao dia de forma automática e grava-los num SharePoint para atualização automática do Power BI. Esse código é feito para ser usado no site da empresa 50Mais Courier Senior
 
 ## O Que o código Faz?
 
