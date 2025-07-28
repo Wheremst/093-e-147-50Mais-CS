@@ -1,5 +1,5 @@
-# 093-e-147-50mais
-### Um projeto de automação em python,  feito para ajudar a acelerar o processo de aquisição de relatórios mensais todo dia do site da empresa 50 mais.
+# 093-e-147-50Mais-CS
+### Um projeto de automação em python,  feito para ajudar a acelerar o processo de geração de relatórios mensais todo dia do site da empresa 50 mais Courier Senior.
 
 ## O Que o código Faz?
 
