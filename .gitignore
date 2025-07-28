@@ -1,0 +1,15 @@
+# Pasta de ambiente virtual do Python
+venv/
+__pycache__/
+
+# Arquivos de log e saída gerados pelo script
+*.log
+*.png
+*.xls
+*.xlsx
+
+# Pasta de downloads
+downloads_excel/
+
+# Arquivos de configuração do editor
+.vscode/
