@@ -4,3 +4,4 @@ pandas
 lxml
 xlrd
 xlwt
+xlwings
