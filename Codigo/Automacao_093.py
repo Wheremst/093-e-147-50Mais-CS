@@ -54,8 +54,10 @@ chrome_options = webdriver.ChromeOptions()
 # --- PASSO 1: CONFIGURAR AS OPÇÕES DO CHROME ---
 
 # Definir o caminho da pasta onde os downloads serão salvos
-diretorio_desejado = r"C:\Projetos com o pai\Login 50mais"
-pasta_destino = "downloads_excel"
+diretorio_desejado = r"CAMINHO/ATÉ/A/PASTA"
+
+# 2. Defina o nome da pasta de destino
+pasta_destino = "NOME DA PASTA"
 caminho_download_absoluto = os.path.abspath(os.path.join(diretorio_desejado, pasta_destino))
 
 # Criar a pasta se ela não existir
@@ -89,12 +91,12 @@ navegador.get("https://50maiscs.brudam.com.br/index.php")
 campo_usuario = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="user"]'))
 )
-campo_usuario.send_keys("SISTEMA50MAIS")#Trocar as credenciais para funcionar
+campo_usuario.send_keys("USUARIO")#Trocar as credenciais para funcionar
 
 campo_senha = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="password"]'))
 )
-campo_senha.send_keys("50Mais@2025") #Trocar as credenciais para funcionar
+campo_senha.send_keys("SENHA") #Trocar as credenciais para funcionar
 
 botao_acessar = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="acessar"]'))
@@ -249,3 +251,4 @@ finally:
     print("\nFechando o navegador.")
     time.sleep(3)
     navegador.quit()
+
