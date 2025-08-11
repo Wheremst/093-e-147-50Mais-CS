@@ -24,7 +24,9 @@ import datetime
 import calendar
 #Tradução de datas
 import locale
-# responsavel pela manipulação do excel
+# Manipulação do excel
+import pandas as pd
+import xlwt
 import xlwings as xw
 
 # Configura a localidade para Português do Brasil para que o nome do mês seja traduzido
@@ -39,6 +41,7 @@ hoje = datetime.date.today()
 nome_mes_atual = hoje.strftime('%B').capitalize()
 ano_atual = hoje.year
 numero_mes_atual = hoje.month
+mes_ano_atual = hoje.strftime('%Y-%m')
 
 # Usa a função monthrange para encontrar o número de dias no mês atual
 # Retorna uma tupla: (dia da semana do dia 1, número de dias no mês)
@@ -51,8 +54,8 @@ chrome_options = webdriver.ChromeOptions()
 # --- PASSO 1: CONFIGURAR AS OPÇÕES DO CHROME ---
 
 # Definir o caminho da pasta onde os downloads serão salvos
-diretorio_desejado = r"CAMINHO/ATÉ/A/PASTA"
-pasta_destino = "NOME DA PASTA"
+diretorio_desejado = r"C:\Projetos com o pai\Login 50mais"
+pasta_destino = "downloads_excel"
 caminho_download_absoluto = os.path.abspath(os.path.join(diretorio_desejado, pasta_destino))
 
 # Criar a pasta se ela não existir
@@ -86,12 +89,12 @@ navegador.get("https://50maiscs.brudam.com.br/index.php")
 campo_usuario = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="user"]'))
 )
-campo_usuario.send_keys("USUARIO")#Trocar as credenciais para funcionar
+campo_usuario.send_keys("SISTEMA50MAIS")#Trocar as credenciais para funcionar
 
 campo_senha = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="password"]'))
 )
-campo_senha.send_keys("SENHA") #Trocar as credenciais para funcionar
+campo_senha.send_keys("50Mais@2025") #Trocar as credenciais para funcionar
 
 botao_acessar = WebDriverWait(navegador, 10).until(
     EC.element_to_be_clickable((By.XPATH, '//*[@id="acessar"]'))
@@ -157,80 +160,92 @@ try:
     )
     download_excel.click()
     
-    # 3. ESPERAR O DOWNLOAD TERMINAR
+    # 2. ESPERAR O DOWNLOAD TERMINAR
     print("Aguardando o download ser concluído...")
     tempo_max_espera = 90
-    download_concluido = False
     nome_original_arquivo = None
-
     for _ in range(tempo_max_espera):
         time.sleep(1)
-        # Verifica se não há mais arquivos temporários de download
-        if not any(fname.endswith('.crdownload') for fname in os.listdir(caminho_download_absoluto)):
-            arquivos_depois = set(os.listdir(caminho_download_absoluto))
-            novos_arquivos = arquivos_depois - arquivos_antes
-            if novos_arquivos:
-                nome_original_arquivo = novos_arquivos.pop()
-                download_concluido = True
-                break
+        arquivos_depois = set(os.listdir(caminho_download_absoluto))
+        novos_arquivos = arquivos_depois - arquivos_antes
+        if novos_arquivos and not any(f.endswith('.crdownload') for f in novos_arquivos):
+            nome_original_arquivo = novos_arquivos.pop()
+            print(f"Download concluído! Arquivo original: {nome_original_arquivo}")
+            break
     
-    if not download_concluido:
+    if not nome_original_arquivo:
         raise Exception("O download não foi concluído no tempo esperado.")
 
-    print(f"Download concluído! Nome original do arquivo: {nome_original_arquivo}")
-
-    # 4. DEFINIR O NOME PADRÃO PARA O MÊS ATUAL
-    mes_ano_atual = datetime.date.today().strftime('%Y-%m') # Formato AAAA-MM
-    
-    # Esse nome de arquivo é o que o programa vai procuarar nas proximas vezes que baixar o excel
-    nome_arquivo_mensal = f"Relatorio_Mensal_{mes_ano_atual}_atalho_093.xls"
-    print(f"O nome padrão para este mês é: {nome_arquivo_mensal}")
-
-    # Constrói o caminho completo para o arquivo original e o de destino
+    # 3. DEFINIR NOMES E CAMINHOS FINAIS
+    nome_arquivo_final = f"Relatorio_Mensal_{mes_ano_atual}_atalho_093.xls"
+    nome_planilha_final = "BD"
     caminho_original = os.path.join(caminho_download_absoluto, nome_original_arquivo)
-    caminho_destino_mensal = os.path.join(caminho_download_absoluto, nome_arquivo_mensal)
+    caminho_final = os.path.join(caminho_download_absoluto, nome_arquivo_final)
 
-    # 5. LÓGICA DE SOBREPOSIÇÃO
-    # Antes de renomear, verifica se o arquivo de destino do mês já existe
-    if os.path.exists(caminho_destino_mensal):
-        print(f"Arquivo '{nome_arquivo_mensal}' já existe. Removendo o antigo para sobrepor...")
-        os.remove(caminho_destino_mensal) # Remove o arquivo antigo
+    # 4. LER O ARQUIVO COM PANDAS
+    print(f"Lendo dados de '{nome_original_arquivo}' como HTML...")
+    lista_de_tabelas = pd.read_html(
+        caminho_original, 
+        encoding='utf-8',
+        decimal=',',      # Diz que a vírgula é o separador decimal
+        thousands='.'     # Diz que o ponto é o separador de milhar
+    )
+    dataframe = lista_de_tabelas[0]
+    if dataframe.empty:
+        raise ValueError("O arquivo foi lido, mas não continha dados.")
 
-    # 6. RENOMEAR O NOVO DOWNLOAD
-    os.rename(caminho_original, caminho_destino_mensal)
-    print(f"Arquivo renomeado com sucesso para '{nome_arquivo_mensal}'!")
-except Exception as e:
-    print(f"Ocorreu um erro no processo de download ou renomeação: {e}")
+    # =================================================================
+    #          ETAPA DE HIGIENIZAÇÃO DOS DADOS
+    # =================================================================
+    print("Higienizando os dados para garantir compatibilidade com .xls...")
     
-# Constrói o caminho completo para o arquivo Excel
-caminho_completo_arquivo = os.path.join(caminho_download_absoluto, nome_arquivo_mensal)
+    # Cria uma cópia do dataframe para trabalhar
+    dataframe_higienizado = dataframe.copy()
 
-# O novo nome que você deseja para a planilha interna
-novo_nome_planilha = "BD" 
+    # Itera sobre cada coluna para tratar os tipos de dados
+    for coluna in dataframe_higienizado.columns:
+        # Verifica se a coluna é do tipo data/hora
+        if pd.api.types.is_datetime64_any_dtype(dataframe_higienizado[coluna]):
+            # Converte as datas para formato de texto (string)
+            # e preenche valores de data vazios (NaT) com texto vazio ''
+            dataframe_higienizado[coluna] = dataframe_higienizado[coluna].apply(
+                lambda x: x.strftime('%d/%m/%Y %H:%M:%S') if pd.notna(x) else ''
+            )
+            
+    # Converte quaisquer outros valores nulos/NaN restantes para texto vazio
+    dataframe_higienizado = dataframe_higienizado.fillna('')
+    # =================================================================
 
-# Inicia uma instância do Excel invisível
-app = xw.App(visible=False)
-
-try:
-    # DIZ AO EXCEL PARA NÃO MOSTRAR NENHUM ALERTA 
-    app.display_alerts = False
-
-    # Abre a pasta de trabalho (o arquivo .xls)
-    workbook = app.books.open(caminho_completo_arquivo)
-
-    # Pega a primeira planilha e a renomeia
-    planilha = workbook.sheets[0]
-    planilha.name = novo_nome_planilha
-
-    # Salva e fecha o arquivo. O Excel vai "limpar" o arquivo ao salvar.
-    workbook.save()
-    workbook.close()
+    print("Dados higienizados. Iniciando escrita manual...")
     
-    print(f"Sucesso! Planilha renomeada para '{novo_nome_planilha}' usando xlwings.")
+    # 5. CRIAR UMA PASTA DE TRABALHO .xls EM BRANCO
+    workbook_wt = xlwt.Workbook(encoding='utf-8')
+    planilha_wt = workbook_wt.add_sheet(nome_planilha_final)
+    
+    # 6. ESCREVER CABEÇALHOS
+    for col_num, valor in enumerate(dataframe_higienizado.columns):
+        planilha_wt.write(0, col_num, str(valor))
+        
+    # 7. ESCREVER OS DADOS HIGIENIZADOS
+    for row_num, row in enumerate(dataframe_higienizado.values.tolist(), 1):
+        for col_num, cell_value in enumerate(row):
+            planilha_wt.write(row_num, col_num, str(cell_value))
+
+    # 8. SOBREPOR E SALVAR
+    if os.path.exists(caminho_final):
+        os.remove(caminho_final)
+    workbook_wt.save(caminho_final)
+    
+    # 9. LIMPEZA
+    os.remove(caminho_original)
+    
+    print(f"\nPROCESSO CONCLUÍDO COM SUCESSO!")
+    print(f"Arquivo final salvo em: {caminho_final}")
 
 except Exception as e:
-    print(f"Ocorreu um erro com xlwings: {e}")
+    print(f"\nOCORREU UM ERRO NO PROCESSO FINAL: {e}")
 
 finally:
-    # Garante que o processo do Excel seja fechado no final
-    app.quit()
+    print("\nFechando o navegador.")
+    time.sleep(3)
+    navegador.quit()
