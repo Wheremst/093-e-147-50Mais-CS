@@ -24,8 +24,6 @@ import calendar
 # Tradução de datas
 import locale
 # Manipulação do excel
-import pandas as pd
-import xlwt
 import xlwings as xw
 
 # Configura a localidade para Português do Brasil para que o nome do mês seja traduzido
@@ -53,8 +51,6 @@ chrome_options = webdriver.ChromeOptions()
 # --- PASSO 1: CONFIGURAR AS OPÇÕES DO CHROME ---
 # Definir o caminho da pasta onde os downloads serão salvos
 diretorio_desejado = r"CAMINHO/ATÉ/A/PASTA"
-
-# 2. Defina o nome da pasta de destino
 pasta_destino = "NOME DA PASTA"
 
 # 3. Crie o CAMINHO ABSOLUTO para a pasta de destino
@@ -195,70 +191,51 @@ try:
         raise Exception("O download não foi concluído no tempo esperado.")
 
     # 3. DEFINIR NOMES E CAMINHOS FINAIS
-    nome_arquivo_final = f"Relatorio_Mensal_{mes_ano_atual}_atalho_147.xls"
+    nome_arquivo_final_xlsx = f"Relatorio_Mensal_{mes_ano_atual}_atalho_147.xlsx"
     nome_planilha_final = "BD"
     caminho_original = os.path.join(caminho_download_absoluto, nome_original_arquivo)
-    caminho_final = os.path.join(caminho_download_absoluto, nome_arquivo_final)
+    caminho_final_xlsx = os.path.join(caminho_download_absoluto, nome_arquivo_final_xlsx)
 
-    # 4. LER O ARQUIVO COM PANDAS
-    print(f"Lendo dados de '{nome_original_arquivo}' como HTML...")
-    lista_de_tabelas = pd.read_html(
-        caminho_original, 
-        encoding='utf-8',
-        decimal=',',      # Diz que a vírgula é o separador decimal
-        thousands='.'     # Diz que o ponto é o separador de milhar
-    )
-    dataframe = lista_de_tabelas[0]
-    if dataframe.empty:
-        raise ValueError("O arquivo foi lido, mas não continha dados.")
+    # 4. SOBREPOR ARQUIVO ANTIGO, SE EXISTIR
+    if os.path.exists(caminho_final_xlsx):
+        print(f"Arquivo final '{nome_arquivo_final_xlsx}' já existe. Removendo para sobrepor...")
+        os.remove(caminho_final_xlsx)
 
-    # =================================================================
-    #          ETAPA DE HIGIENIZAÇÃO DOS DADOS
-    # =================================================================
-    print("Higienizando os dados para garantir compatibilidade com .xls...")
+    # 5. INICIAR O XLWINGS PARA AUTOMATIZAR O EXCEL
+    print("Iniciando o Excel em segundo plano para converter o arquivo...")
+    # Inicia uma instância do Excel invisível
+    app = xw.App(visible=False)
     
-    # Cria uma cópia do dataframe para trabalhar
-    dataframe_higienizado = dataframe.copy()
-
-    # Itera sobre cada coluna para tratar os tipos de dados
-    for coluna in dataframe_higienizado.columns:
-        # Verifica se a coluna é do tipo data/hora
-        if pd.api.types.is_datetime64_any_dtype(dataframe_higienizado[coluna]):
-            # Converte as datas para formato de texto (string)
-            # e preenche valores de data vazios (NaT) com texto vazio ''
-            dataframe_higienizado[coluna] = dataframe_higienizado[coluna].apply(
-                lambda x: x.strftime('%d/%m/%Y %H:%M:%S') if pd.notna(x) else ''
-            )
-            
-    # Converte quaisquer outros valores nulos/NaN restantes para texto vazio
-    dataframe_higienizado = dataframe_higienizado.fillna('')
-    # =================================================================
-
-    print("Dados higienizados. Iniciando escrita manual...")
-    
-    # 5. CRIAR UMA PASTA DE TRABALHO .xls EM BRANCO
-    workbook_wt = xlwt.Workbook(encoding='utf-8')
-    planilha_wt = workbook_wt.add_sheet(nome_planilha_final)
-    
-    # 6. ESCREVER CABEÇALHOS
-    for col_num, valor in enumerate(dataframe_higienizado.columns):
-        planilha_wt.write(0, col_num, str(valor))
+    try:
+        # Desativa alertas do Excel (como o de "formato de arquivo não corresponde")
+        app.display_alerts = False
         
-    # 7. ESCREVER OS DADOS HIGIENIZADOS
-    for row_num, row in enumerate(dataframe_higienizado.values.tolist(), 1):
-        for col_num, cell_value in enumerate(row):
-            planilha_wt.write(row_num, col_num, str(cell_value))
+        # Abre o arquivo baixado. O Excel irá renderizá-lo com a formatação correta.
+        workbook = app.books.open(caminho_original)
 
-    # 8. SOBREPOR E SALVAR
-    if os.path.exists(caminho_final):
-        os.remove(caminho_final)
-    workbook_wt.save(caminho_final)
-    
-    # 9. LIMPEZA
+        # Renomeia a primeira planilha
+        print(f"Renomeando a planilha para '{nome_planilha_final}'...")
+        planilha = workbook.sheets[0]
+        planilha.name = nome_planilha_final
+
+        # Salva o arquivo no novo formato .xlsx
+        print(f"Salvando o arquivo no novo formato .xlsx: '{nome_arquivo_final_xlsx}'")
+        workbook.save(caminho_final_xlsx)
+        workbook.close()
+        
+        print("\nArquivo convertido para .xlsx com sucesso, mantendo a formatação.")
+
+    finally:
+        # Garante que o processo do Excel seja completamente fechado
+        app.quit()
+        print("Processo do Excel fechado.")
+
+    # 6. LIMPEZA FINAL
     os.remove(caminho_original)
+    print("Arquivo original baixado foi removido.")
     
     print(f"\nPROCESSO CONCLUÍDO COM SUCESSO!")
-    print(f"Arquivo final salvo em: {caminho_final}")
+    print(f"Arquivo final formatado salvo em: {caminho_final_xlsx}")
 
 except Exception as e:
     print(f"\nOCORREU UM ERRO NO PROCESSO FINAL: {e}")
